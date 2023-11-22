@@ -1,44 +1,55 @@
 import socket
 
-server = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-clientnext = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+proxyS = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
 
-host = socket.gethostname()
-hostnext = socket.gethostname()
-port = 4444
-portnext = 444
+hostProxy = socket.gethostname()
+portProxy = 4444
 
-server.bind((host, port))
-server.listen(5)
-
-print("host =",host,"port =",port)
-client, address = server.accept()
-
-print("Connection to", hostnext, portnext)
-clientnext.connect((hostnext,portnext))
+proxyS.bind((hostProxy, portProxy))
+proxyS.listen(5)
 
 while True:
-    print("Connection recieved from", client, address)
-    message = client.recv(1024).decode()
-    print("Recieved from", host, port)
+    # Attendre une connexion client
+    print("host =",hostProxy,"port =",portProxy)
+    clientS, addressClient = proxyS.accept()
+
+    # Recevoir les données du client
+    print("Connection recieved from", clientS, addressClient)
+    message = clientS.recv(1024).decode()
+    print("Recieved from", hostProxy, portProxy)
     print("message: ", message)
-    clientnext.send(message.encode('ascii'))
-    print("Sent to", hostnext, portnext)
 
+    # Créer un socket pour le serveur
+    serverS = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    #client.send(message.encode('ascii'))
-    #print("Sent to", host, port)
-    #response = client.recv(1024).decode()
-    #print(response)
+    # Extraire l'adresse IP et le port du serveur à partir de la demande du client
+    addressServer = message.split(b'\r\n')[1].split(b' ')[1]
+    addressServer = addressServer.split(b':')
+    hostServer = addressServer[0]
+    portServer = int(addressServer[1])
 
-#print("Connection to", host, portnext)
-#client.connect((host,portnext))
+    # Se connecter au serveur
+    print("Connection to", hostServer, portServer)
+    serverS.connect((hostServer, portServer))
 
-#while True:
-    #print("Connection recieved from", client, address)
-    #message = client.recv(1024).decode()
-    
-    #client.send(message.encode('ascii'))
-    #print("Sent to", host, port)
-    #response = client.recv(1024).decode()
-    #print(response)
+    # Envoyer les données au serveur
+    print("Sent to", hostServer, portServer)
+    serverS.sendall(message.encode('ascii'))
+
+    # Recevoir les données du serveur
+    print("Connection recieved from", serverS, addressServer)
+    response = serverS.recv(1024).decode()
+    print("Recieved from", hostServer, portServer)
+    print("réponse: ", response)
+
+    # Fermer la connexion avec le serveur
+    serverS.close()
+    print("Connection with Server closed")
+
+    # Envoyer les données au client
+    clientS.sendall(response.encode('ascii'))
+    print("Sent to", clientS, addressClient)
+
+    # Fermer la connexion avec le client
+    clientS.close()
+    print("Connection with Client closed")
